@@ -1,5 +1,6 @@
 from scrapers.amdox import process_new_jobs
 from analyzer import CareerBotAnalyzer
+from notifier import send_telegram_notification
 
 def main():
     print("=" * 60)
@@ -40,6 +41,8 @@ def main():
     print("🎯 FINAL MATCHING RESULTS:")
     print("=" * 60)
 
+    approved_jobs_for_telegram = []
+
     # Merge results and print
     for result in analysis_results:
         idx = result.get("job_index")
@@ -57,9 +60,25 @@ def main():
             if should_apply:
                 print(f"📄 Best CV to Send: {result.get('selected_cv_id')}")
             
+            approved_jobs_for_telegram.append({
+                    "title": job_data['title'],
+                    "location": job_data['location'],
+                    "score": result.get('match_score'),
+                    "cv": result.get('selected_cv_id'),
+                    "apply_link": job_data['apply_link']
+                })
+            
             print(f"💡 AI Reasoning: {result.get('reason')}")
             print("-" * 50)
-            
+
+    if approved_jobs_for_telegram:
+        print("\n" + "=" * 60)
+        print(f"[START] STEP 3: Sending Telegram Notification for {len(approved_jobs_for_telegram)} jobs...")
+        print("=" * 60)
+        send_telegram_notification(approved_jobs_for_telegram)
+    else:
+        print("\n[INFO] No jobs met the criteria (Apply: NO). Telegram notification skipped.")
+
     print("\n[INFO] All processes completed successfully.")
 
 if __name__ == "__main__":

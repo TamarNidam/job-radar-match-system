@@ -7,6 +7,7 @@ import time
 import random
 from bs4 import BeautifulSoup
 from datetime import datetime
+import sys
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -113,6 +114,10 @@ def process_new_jobs(search_term=""):
     and return an organized list.
     """
     new_positions = fetch_and_filter_initial_jobs(search_term)
+    
+    if new_positions is None or (not new_positions and "Error" in str(sys.exc_info())):
+        print("⚠️ Skipping timestamp update due to fetch error.")
+        return []
     
     if not new_positions:
         print("📭 No new jobs found since the last scan.")
