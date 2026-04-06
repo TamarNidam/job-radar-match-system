@@ -1,0 +1,52 @@
+{
+  "candidate": {
+    "name": "Tamar",
+    "settings": {
+      "min_apply_score": 70,
+      "max_experience_gap": 2
+    },
+    "experience": {
+      "actual_years": 2,
+      "seniority_level": "Senior (Performance based)",
+      "has_clearance": true
+    },
+    "location": {
+      "preferred_order": ["South District", "Center District"],
+      "blacklist": ["North", "Abroad", "Remote Only"],
+      "max_office_days": 5
+    },
+    "roles": {
+      "target": ["Senior Software Engineer", "Backend", "Full Stack", "Team Lead", "AI"],
+      "blacklist_keywords": ["UI Only", "Frontend Only", "Junior", "Intern"]
+    },
+    "cv_folder": "cv_files",
+    "cv_directory": [
+      {
+        "id": "fullstack_general",
+        "file": "1.pdf",
+        "focus": "Enterprise Full-Stack, NestJS, React, and Agile workflows[cite: 57, 59, 72, 76]."
+      },
+      {
+        "id": "performance_ai",
+        "file": "2.pdf",
+        "focus": "Performance tuning, Multithreading, PyTorch, and Generative AI[cite: 28, 32, 33, 42]."
+      },
+      {
+        "id": "high_scale_kafka",
+        "file": "3.pdf",
+        "focus": "High-scale distributed systems, Kafka, and system resilience[cite: 131, 135, 144, 146]."
+      },
+      {
+        "id": "realtime_cpp",
+        "file": "4.pdf",
+        "focus": "Real-time systems, C++, WPF, and desktop architecture[cite: 189, 191, 192, 197]."
+      },
+      {
+        "id": "gis_backend",
+        "file": "5.pdf",
+        "focus": "GIS components, spatial data processing, and .NET architecture[cite: 1, 15]."
+      }
+    ]
+  }
+}
+
