@@ -4,6 +4,7 @@ on:
   schedule:
     # Runs at minute 0 past every 5th hour.
     - cron: '0 */5 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write # Required to push the updated config file back to the repo
