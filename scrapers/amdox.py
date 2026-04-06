@@ -10,7 +10,7 @@ from datetime import datetime
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "lastRun_config.json"
 
 def get_last_run_timestamp():
     """Reads the last run timestamp (Unix Timestamp) from the config file."""
