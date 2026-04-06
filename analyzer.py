@@ -2,8 +2,11 @@ import json
 import google.generativeai as genai
 import pypdf
 import os
+from dotenv import load_dotenv
 
-GEMINI_API_KEY = "AIzaSyBjrNnSZCcCjvCB0GYdz6Vb9kfQQiqqo9c"
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 class CareerBotAnalyzer:
     def __init__(self, config_path="candidate_config.json"):

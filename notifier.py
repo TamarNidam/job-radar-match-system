@@ -1,7 +1,11 @@
 import requests
+import os
+from dotenv import load_dotenv
 
-TOKEN = "8634110209:AAEzV5IShM472oDLc962PkGcrBIutEjdYRE"
-CHAT_ID = "5680571658"
+load_dotenv()
+
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_telegram_notification(jobs):
     """
