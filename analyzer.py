@@ -1,17 +1,16 @@
-import os
 import json
 import google.generativeai as genai
 import pypdf
+import os
 
-os.environ["GEMINI_API_KEY"] = "AIzaSyBjrNnSZCcCjvCB0GYdz6Vb9kfQQiqqo9c"
-#ב-GitHub Actions (בעתיד): תוסיפי את המפתח תחת Settings > Secrets and variables > Actions.
-#AIzaSyBjrNnSZCcCjvCB0GYdz6Vb9kfQQiqqo9c
+GEMINI_API_KEY = "AIzaSyBjrNnSZCcCjvCB0GYdz6Vb9kfQQiqqo9c"
+
 class CareerBotAnalyzer:
     def __init__(self, config_path="candidate_config.json"):
         with open(config_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
         
-        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+        genai.configure(api_key=GEMINI_API_KEY)
         self.model = genai.GenerativeModel('gemini-2.5-flash')
         self.settings = self.config['candidate']['settings']
 
