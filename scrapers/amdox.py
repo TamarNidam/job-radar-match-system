@@ -108,7 +108,7 @@ def fetch_job_description(position_id):
         print(f"❌ Error fetching description from API: {e}")
         return "Error fetching details."
 
-def process_new_jobs(search_term=""):
+def process_amdocs_jobs(search_term=""):
     """
     Manages the overall workflow: fetch, filter, deep-dive into details,
     and return an organized list.
@@ -156,7 +156,7 @@ def process_new_jobs(search_term=""):
     return detailed_jobs
 
 if __name__ == "__main__":
-    final_jobs_list = process_new_jobs()
+    final_jobs_list = process_amdocs_jobs()
     
     if final_jobs_list:
         print("\n" + "="*50)
