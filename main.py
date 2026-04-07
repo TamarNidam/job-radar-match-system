@@ -1,36 +1,76 @@
-from scrapers.amdox import process_new_jobs
+import os
+from flask import json
+from scrapers.microsoft import process_microsoft_jobs
+from scrapers.amdox import process_amdocs_jobs
 from analyzer import CareerBotAnalyzer
 from notifier import send_telegram_notification
+from datetime import datetime
+
+CONFIG_FILE = "lastRun_config.json"
+
+def get_last_run_timestamp():
+    """Reads the last run timestamp (Unix Timestamp) from the config file."""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get("last_run", 0)
+        except Exception as e:
+            print(f"⚠️ Error reading config file: {e}")
+    return 0
+
+def update_last_run_timestamp():
+    """Updates the config file with the current timestamp."""
+    current_ts = int(datetime.now().timestamp())
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump({"last_run": current_ts}, f, indent=4)
+    print("🕒 Config file updated with current timestamp.")
 
 def main():
     print("=" * 60)
     print("[START] STEP 1: Fetching new jobs from scrapers...")
     print("=" * 60)
     
-    # Fetch jobs using the scraper
-    try:
-        jobs = process_new_jobs()
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch jobs: {e}")
-        return
+    last_run_ts = get_last_run_timestamp()
+    all_jobs = []
 
-    # Check if we got 0 jobs
-    if not jobs or len(jobs) == 0:
-        print("\n[RESULT] Step 1 finished: 0 new jobs found.")
+    # Fetch jobs using the scraper
+    print("\n🔍 Scanning Amdocs...")
+    try:
+        amdocs_jobs = process_amdocs_jobs(last_run_ts)
+        all_jobs.extend(amdocs_jobs)
+        print(f"✅ Amdocs: Found {len(amdocs_jobs)} new jobs.")
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch Amdocs jobs: {e}")
+
+    print("\n🔍 Scanning Microsoft...")
+    try:
+        msft_jobs = process_microsoft_jobs(last_run_ts)
+        all_jobs.extend(msft_jobs)
+        print(f"✅ Microsoft: Found {len(msft_jobs)} new jobs.")
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch Microsoft jobs: {e}")
+
+    update_last_run_timestamp()
+
+    if not all_jobs or (len(all_jobs) == 0):
+        print("\n" + "=" * 60)
+        print("[RESULT] Step 1 finished: 0 new jobs found across all sources.")
         print("[INFO] Skipping Gemini AI analysis. Process terminated gracefully.")
+        print("=" * 60)
         return
         
-    print(f"\n[SUCCESS] Step 1 finished. Total jobs fetched: {len(jobs)}")
+    print(f"\n[SUCCESS] Step 1 finished. Total jobs fetched: {len(all_jobs)}")
     print("Job Titles Fetched:")
-    for j in jobs:
-        print(f" - {j['title']}")
+    for j in all_jobs:
+        print(f" - {j['title']} (@ {j.get('location', 'Unknown')})")
 
     print("\n" + "=" * 60)
-    print(f"[START] STEP 2: Sending all {len(jobs)} jobs to Gemini AI in ONE batch...")
+    print(f"[START] STEP 2: Sending all {len(all_jobs)} jobs to Gemini AI in ONE batch...")
     print("=" * 60)
     
     bot = CareerBotAnalyzer("candidate_config.json")
-    analysis_results = bot.analyze_jobs_batch(jobs)
+    analysis_results = bot.analyze_jobs_batch(all_jobs)
     
     if not analysis_results:
         print("\n[ERROR] Step 2 failed: Received empty response from Gemini.")
@@ -46,8 +86,8 @@ def main():
     # Merge results and print
     for result in analysis_results:
         idx = result.get("job_index")
-        if idx is not None and idx < len(jobs):
-            job_data = jobs[idx]
+        if idx is not None and idx < len(all_jobs):
+            job_data = all_jobs[idx]
             
             print(f"\n📌 Job Title: {job_data['title']}")
             print(f"📍 Location: {job_data['location']}")
