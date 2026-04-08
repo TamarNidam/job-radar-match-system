@@ -110,7 +110,7 @@ def main():
             
             print(f"💡 AI Reasoning: {result.get('reason')}")
             print("-" * 50)
-
+#send only jobs that are approved by the AI (Apply: YES)
     if approved_jobs_for_telegram:
         print("\n" + "=" * 60)
         print(f"[START] STEP 3: Sending Telegram Notification for {len(approved_jobs_for_telegram)} jobs...")
