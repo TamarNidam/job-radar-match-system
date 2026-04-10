@@ -6,9 +6,10 @@ from bs4 import BeautifulSoup
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def fetch_and_filter_initial_jobs(last_seen_job_id):
+def fetch_and_filter_initial_jobs(recent_job_ids):
     """
-    מושך את המשרות עם הפילטרים המבוקשים, ממשיך לדפדף עד שפוגש את המשרה האחרונה שראינו.
+    Fetches job listings with specified filters, paginates until it encounters 
+    any of the job IDs provided in the recent_job_ids list.
     """
     api_url = "https://careers.checkpoint.com/index.php"
     headers = {
@@ -17,12 +18,12 @@ def fetch_and_filter_initial_jobs(last_seen_job_id):
     
     new_positions = []
     start = 0
-    found_last_job = False
+    found_known_job = False
     
-    print(f"🚀 סורק את Check Point...")
-    print(f"🔍 מחפש משרות חדשות עד שנגיע ל-ID: {last_seen_job_id}\n")
+    print(f"🚀 Scanning Check Point Careers...")
+    print(f"🔍 Searching for new jobs until we hit any of these recent IDs: {recent_job_ids}\n")
     
-    while not found_last_job:
+    while not found_known_job:
         params = {
             "module": "cpcareers",
             "a": "search",
@@ -48,7 +49,7 @@ def fetch_and_filter_initial_jobs(last_seen_job_id):
             job_cards = soup.find_all('div', class_='position')
             
             if not job_cards:
-                print("⚠️ לא נמצאו עוד משרות בעמוד זה. ייתכן שהגענו לסוף הרשימה.")
+                print("⚠️ No more jobs found on this page. Reached the end of the list.")
                 break
                 
             for card in job_cards:
@@ -56,38 +57,33 @@ def fetch_and_filter_initial_jobs(last_seen_job_id):
                 for a_tag in card.find_all('a'):
                     if 'joborderid=' in a_tag.get('href', ''):
                         title_tag = a_tag
-                        print(f"🔎 נמצא כותרת עם joborderid: {a_tag.text.strip()}")
                         break
                 
                 if not title_tag:
-                    print("⚠️ לא נמצא כותרת עם joborderid. דילוג על כרטיס זה.") 
                     continue
                     
                 title = title_tag.text.strip()
                 link = title_tag['href']
                 
-                # תיקון הקישור לפורמט מלא
+                # Fix relative links
                 if link.startswith('index.php'):
                     link = f"https://careers.checkpoint.com/{link}"
-                    print(f"🔗 מתקן קישור: {link}")
                     
-                # חילוץ ה-ID של המשרה (joborderid) מתוך הקישור
+                # Extract Job ID
                 job_id = 0
                 if 'joborderid=' in link:
                     try:
                         job_id = int(link.split('joborderid=')[-1].split('&')[0])
-                        print(f"📌 מחלץ joborderid: {job_id}")
                     except ValueError:
-                        print(f"⚠️ לא ניתן לחלץ joborderid מתוך הקישור: {link}")
                         pass
                 
-                # תנאי העצירה החכם: הגענו למשרה האחרונה שאנחנו מכירים!
-                if job_id == last_seen_job_id:
-                    print(f"🛑 הגענו למשרה מוכרת (ID: {job_id}). עוצר את איסוף הרשימה.")
-                    found_last_job = True
-                    break # יוצא מלולאת ה-for
+                # Smart Stop Condition: Stop if the job_id is in our list of recent jobs
+                if job_id in recent_job_ids:
+                    print(f"🛑 Reached a known job (ID: {job_id}). Stopping page traversal.")
+                    found_known_job = True
+                    break 
                 
-                # חילוץ המיקום
+                # Extract Location
                 location = "Unknown Location"
                 pos_info = card.find('div', class_='posInfo')
                 if pos_info:
@@ -95,7 +91,6 @@ def fetch_and_filter_initial_jobs(last_seen_job_id):
                     if loc_tag and loc_tag.parent:
                         location = loc_tag.parent.text.strip()
 
-                # מוסיפים את המשרה החדשה לרשימה
                 new_positions.append({
                     "id": job_id,
                     "title": title,
@@ -103,7 +98,7 @@ def fetch_and_filter_initial_jobs(last_seen_job_id):
                     "job_link": link
                 })
                 
-            # עוברים לעמוד הבא (קפיצה של 10 תוצאות)
+            # Move to the next page (10 items per page)
             start += 10
             
         except Exception as e:
@@ -112,27 +107,24 @@ def fetch_and_filter_initial_jobs(last_seen_job_id):
 
     return new_positions
 
-def fetch_job_description(job_link):
-    """
-    נכנס לקישור של המשרה הספציפית ומחלץ את התוכן המלא שלה מתוך jobOrderInfo.
-    """
+def fetch_job_description(session, job_link): #  session כפרמטר
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://careers.checkpoint.com/index.php?m=cpcareers&a=search" # הוספת Referer
     }
     
     try:
-        response = requests.get(job_link, headers=headers, verify=False, timeout=15)
+        response = session.get(job_link, headers=headers, verify=False, timeout=15)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # חיפוש הקונטיינר המרכזי שמכיל את כל תיאור המשרה בעמוד המלא
-        description_container = soup.find('div', id='jobOrderInfo')
-        
-        if description_container:
-            # מנקה את ה-HTML ומחזיר את כל הטקסט (דרישות, אחריות וכו') עם ירידות שורה
-            return description_container.get_text(separator='\n', strip=True)
+        container = soup.find('div', id='jobOrderInfo')
+
+        if container:
+            # Clean the HTML and return text with line breaks
+            return container.get_text(separator='\n', strip=True)
         else:
+            print("Description container not found.")
             return "Description container not found."
             
     except Exception as e:
@@ -140,24 +132,26 @@ def fetch_job_description(job_link):
         return "Error fetching details."
     
 
-def process_checkpoint_jobs(last_seen_job_id):
+def process_checkpoint_jobs(recent_job_ids):
     """
-    המנוע הראשי: אוסף את הרשימה, ואז שואב את הפרטים מכל עמוד.
+    Main engine: Collects the job list, then extracts details for each new job.
     """
-    new_positions = fetch_and_filter_initial_jobs(last_seen_job_id)
+    session = requests.Session()
+
+    new_positions = fetch_and_filter_initial_jobs(recent_job_ids)
     
     if not new_positions:
-        print("📭 לא נמצאו משרות חדשות מאז הסריקה האחרונה.")
+        print("📭 No new jobs found since the last scan.")
         return []
         
-    print(f"\n✅ נמצאו {len(new_positions)} משרות חדשות! מתחיל לחלץ את התוכן מכל אחת...\n")
+    print(f"\n✅ Found {len(new_positions)} new jobs! Extracting full descriptions...\n")
     
     detailed_jobs = []
     
     for index, job in enumerate(new_positions, 1):
-        print(f"  [{index}/{len(new_positions)}] שואב מידע עבור: {job['title']} (ID: {job['id']})...")
-        print(f"     קישור: {job['job_link']}")
-        description = fetch_job_description(job['job_link'])
+        print(f"  [{index}/{len(new_positions)}] Fetching details for: {job['title']} (ID: {job['id']})...")
+        print(f"     Link: {job['job_link']}")
+        description = fetch_job_description(session, job['job_link'])
         
         detailed_jobs.append({
             "id": job['id'],
@@ -167,23 +161,24 @@ def process_checkpoint_jobs(last_seen_job_id):
             "description": description
         })
         
-        # השהייה חכמה למניעת חסימה
-        time.sleep(random.uniform(1.0, 2.5))
+        # Smart delay to prevent blocking
+        time.sleep(random.uniform(2.0, 4.5))
         
     return detailed_jobs
 
 if __name__ == "__main__":
-    LAST_JOB_ID = 25430 
+    # Provide a list of the last 3 Job IDs you successfully saved to your DB.
+    # The script will stop searching as soon as it sees ANY of these IDs.
+    RECENT_JOB_IDS = [25430, 25425, 25420] 
     
-    final_jobs_list = process_checkpoint_jobs(LAST_JOB_ID)
+    final_jobs_list = process_checkpoint_jobs(RECENT_JOB_IDS)
     
     if final_jobs_list:
         print("\n" + "="*50)
-        print("🎯 סיכום משרות:")
+        print("🎯 Jobs Summary:")
         for job in final_jobs_list:
-            print(f"\n📌 כותרת: {job['title']} (ID: {job['id']})")
-            print(f"📍 מיקום: {job['location']}")
-            print(f"🔗 קישור: {job['job_link']}")
-            print(f"📄 תיאור (חלקי):\n{job['description'][:2500]}...\n")
+            print(f"\n📌 Title: {job['title']} (ID: {job['id']})")
+            print(f"📍 Location: {job['location']}")
+            print(f"🔗 Link: {job['job_link']}")
+            print(f"📄 Description (Partial):\n{job['description'][:2500]}...\n")
             print("-" * 50)
-        
