@@ -6,6 +6,10 @@ from bs4 import BeautifulSoup
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+INITIAL_WAIT = (15, 30)
+NORMAL_WAIT_RANGE = (30, 60) 
+RETRY_WAIT_RANGE = (120, 180)
+
 def fetch_and_filter_initial_jobs(recent_job_ids):
     """
     Fetches job listings with specified filters, paginates until it encounters 
@@ -42,7 +46,7 @@ def fetch_and_filter_initial_jobs(recent_job_ids):
         }
         
         try:
-            response = requests.get(api_url, params=params, headers=headers, verify=False, timeout=15)
+            response = requests.get(api_url, params=params, headers=headers, verify=False, timeout=20)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -107,21 +111,19 @@ def fetch_and_filter_initial_jobs(recent_job_ids):
 
     return new_positions
 
-def fetch_job_description(session, job_link): #  session כפרמטר
+def fetch_job_description(job_link):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://careers.checkpoint.com/index.php?m=cpcareers&a=search" # הוספת Referer
     }
     
     try:
-        response = session.get(job_link, headers=headers, verify=False, timeout=15)
+        response = requests.get(job_link, headers=headers, verify=False, timeout=15)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         container = soup.find('div', id='jobOrderInfo')
 
         if container:
-            # Clean the HTML and return text with line breaks
             return container.get_text(separator='\n', strip=True)
         else:
             print("Description container not found.")
@@ -136,7 +138,6 @@ def process_checkpoint_jobs(recent_job_ids):
     """
     Main engine: Collects the job list, then extracts details for each new job.
     """
-    session = requests.Session()
 
     new_positions = fetch_and_filter_initial_jobs(recent_job_ids)
     
@@ -146,13 +147,30 @@ def process_checkpoint_jobs(recent_job_ids):
         
     print(f"\n✅ Found {len(new_positions)} new jobs! Extracting full descriptions...\n")
     
+    initial_wait = random.uniform(*INITIAL_WAIT)
+    print(f"ACTION: Cooling down for {initial_wait:.1f}s before first job fetch...")
+    time.sleep(initial_wait)
+
     detailed_jobs = []
     
     for index, job in enumerate(new_positions, 1):
         print(f"  [{index}/{len(new_positions)}] Fetching details for: {job['title']} (ID: {job['id']})...")
         print(f"     Link: {job['job_link']}")
-        description = fetch_job_description(session, job['job_link'])
-        
+        description = fetch_job_description(job['job_link'])
+        if not description:
+            retry_wait = random.uniform(*RETRY_WAIT_RANGE)
+            print(f"WARNING: No content for ID {job['id']}. Possible block or race condition.")
+            print(f"ACTION: Waiting {retry_wait/60:.1f} minutes before RETRY...")
+            time.sleep(retry_wait)
+            
+            description = fetch_job_description(job['job_link'])
+
+            if not description:
+                print(f"RESULT: Retry failed for ID {job['id']}.")
+                description = "Description not found after clean-slate retry."
+            else:
+                print(f"RESULT: Retry SUCCESSFUL for ID {job['id']}.")
+
         detailed_jobs.append({
             "id": job['id'],
             "title": job['title'],
@@ -161,8 +179,10 @@ def process_checkpoint_jobs(recent_job_ids):
             "description": description
         })
         
-        # Smart delay to prevent blocking
-        time.sleep(random.uniform(2.0, 4.5))
+        if index < len(new_positions):
+            sleep_time = random.uniform(*NORMAL_WAIT_RANGE)
+            print(f"ACTION: Waiting {sleep_time:.1f}s before next job...")
+            time.sleep(sleep_time)
         
     return detailed_jobs
 
@@ -180,5 +200,5 @@ if __name__ == "__main__":
             print(f"\n📌 Title: {job['title']} (ID: {job['id']})")
             print(f"📍 Location: {job['location']}")
             print(f"🔗 Link: {job['job_link']}")
-            print(f"📄 Description (Partial):\n{job['description'][:2500]}...\n")
+            print(f"📄 Description (Partial):\n{job['description'][:200]}...\n")
             print("-" * 50)
