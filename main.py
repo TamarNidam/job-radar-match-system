@@ -1,6 +1,6 @@
 import os
 from flask import json
-from JobPilot.scrapers.check_point import process_checkpoint_jobs
+from scrapers.check_point import process_checkpoint_jobs
 from scrapers.microsoft import process_microsoft_jobs
 from scrapers.amdox import process_amdocs_jobs
 from analyzer import CareerBotAnalyzer
