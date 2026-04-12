@@ -125,7 +125,7 @@ def fetch_job_description(session, job_link): #  session כפרמטר
             return container.get_text(separator='\n', strip=True)
         else:
             print("Description container not found.")
-            return "Description container not found."
+            return ""
             
     except Exception as e:
         print(f"❌ Error fetching description: {e}")
@@ -149,6 +149,10 @@ def process_checkpoint_jobs(recent_job_ids):
     detailed_jobs = []
     
     for index, job in enumerate(new_positions, 1):
+        delay_seconds = random.uniform(20.0, 45.0)
+        print(f"⏳ Waiting {delay_seconds:.1f} seconds to prevent blocking...")
+        time.sleep(delay_seconds)
+        
         print(f"  [{index}/{len(new_positions)}] Fetching details for: {job['title']} (ID: {job['id']})...")
         print(f"     Link: {job['job_link']}")
         description = fetch_job_description(session, job['job_link'])
@@ -160,9 +164,6 @@ def process_checkpoint_jobs(recent_job_ids):
             "job_link": job['job_link'],
             "description": description
         })
-        
-        # Smart delay to prevent blocking
-        time.sleep(random.uniform(2.0, 4.5))
         
     return detailed_jobs
 

@@ -1,39 +1,48 @@
 import os
 from flask import json
+from JobPilot.scrapers.check_point import process_checkpoint_jobs
 from scrapers.microsoft import process_microsoft_jobs
 from scrapers.amdox import process_amdocs_jobs
 from analyzer import CareerBotAnalyzer
 from notifier import send_telegram_notification
-from datetime import datetime
+from datetime import datetime, timedelta
 
 CONFIG_FILE = "lastRun_config.json"
 
-def get_last_run_timestamp():
+def get_last_run_data():
     """Reads the last run timestamp (Unix Timestamp) from the config file."""
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                return data.get("last_run", 0)
+                last_run = data.get("last_run", 0)
+                checkpoint_ids = data.get("checkpoint_last_ids", [0, 0, 0])
+                return last_run, checkpoint_ids
         except Exception as e:
             print(f"⚠️ Error reading config file: {e}")
-    return 0
+    return 0, []
 
-def update_last_run_timestamp():
-    """Updates the config file with the current timestamp."""
-    current_ts = int(datetime.now().timestamp())
+def update_last_run_data(checkpoint_ids):
+    """Updates the config file with the current timestamp and latest checkpoint IDs."""
+    current_ts= int((datetime.now() - timedelta(minutes=4)).timestamp())
+    
+    checkpoint_ids = (checkpoint_ids + [0, 0, 0])[:3]
+
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-        json.dump({"last_run": current_ts}, f, indent=4)
-    print("🕒 Config file updated with current timestamp.")
+        json.dump({
+            "last_run": current_ts,
+            "checkpoint_last_ids": checkpoint_ids
+        }, f, indent=4)
+    print("🕒 Config file updated with current timestamp and Check Point IDs.")
 
 def main():
     print("=" * 60)
     print("[START] STEP 1: Fetching new jobs from scrapers...")
     print("=" * 60)
     
-    last_run_ts = get_last_run_timestamp()
+    last_run_ts, last_checkpoint_ids = get_last_run_data()
     all_jobs = []
-
+    
     # Fetch jobs using the scraper
     print("\n🔍 Scanning Amdocs...")
     try:
@@ -51,7 +60,31 @@ def main():
     except Exception as e:
         print(f"[ERROR] Failed to fetch Microsoft jobs: {e}")
 
-    update_last_run_timestamp()
+    print("\n🔍 Scanning Check Point...")
+    try:
+        checkpoint_jobs = process_checkpoint_jobs(last_checkpoint_ids)
+        
+        valid_checkpoint_jobs = []
+        for job in checkpoint_jobs:
+            desc = job.get('description', '')
+            invalid_markers = ["Description container not found", "Error fetching details", "", " "]
+            
+            if desc and not any(marker in desc for marker in invalid_markers):
+                valid_checkpoint_jobs.append(job)
+            else:
+                print(f"⚠️ Skipping job {job.get('id')} - No valid description found.")
+        
+        if valid_checkpoint_jobs:
+            new_valid_ids = [job['id'] for job in valid_checkpoint_jobs]
+            last_checkpoint_ids = (new_valid_ids + last_checkpoint_ids)[:3]
+        
+        all_jobs.extend(valid_checkpoint_jobs)
+        print(f"✅ Check Point: Found {len(valid_checkpoint_jobs)} valid jobs (Filtered {len(checkpoint_jobs) - len(valid_checkpoint_jobs)}).")
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch Check Point jobs: {e}")
+
+    update_last_run_data(last_checkpoint_ids)
 
     if not all_jobs or (len(all_jobs) == 0):
         print("\n" + "=" * 60)
@@ -105,7 +138,8 @@ def main():
                     "location": job_data['location'],
                     "score": result.get('match_score'),
                     "cv": result.get('selected_cv_id'),
-                    "apply_link": job_data['apply_link']
+                    "apply_link": job_data['apply_link'],
+                    "reason": result.get('reason')
                 })
             
             print(f"💡 AI Reasoning: {result.get('reason')}")
