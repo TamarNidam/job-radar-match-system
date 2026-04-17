@@ -116,7 +116,20 @@ def fetch_job_description(job_link):
         container = soup.find('div', id='jobOrderInfo')
 
         if container:
-            return container.get_text(separator='\n', strip=True)
+            print(f"✅ Successfully fetched description for: {job_link}")
+            info_sections = container.find_all('div', class_='info')
+            
+            # If the specific <div class="info"> sections exist, extract them individually
+            if info_sections:
+                description = ""
+                for section in info_sections:
+                    description += section.get_text(separator='\n', strip=True) + "\n\n"
+                    
+                return description.strip()
+            else:
+                # If no specific sections, return the entire text content of the container
+                full_description = container.get_text(separator='\n', strip=True)
+                return {"Full Description": full_description}
         else:
             print("Description container not found.")
             return ""
@@ -162,7 +175,7 @@ def process_checkpoint_jobs(recent_job_ids):
     return detailed_jobs
 
 if __name__ == "__main__":
-    RECENT_JOB_IDS = [25430, 25425, 25420] 
+    RECENT_JOB_IDS = [25529,25527, 25491] 
     
     final_jobs_list = process_checkpoint_jobs(RECENT_JOB_IDS)
     
@@ -173,5 +186,5 @@ if __name__ == "__main__":
             print(f"\n📌 Title: {job['title']} (ID: {job['id']})")
             print(f"📍 Location: {job['location']}")
             print(f"🔗 Link: {job['job_link']}")
-            print(f"📄 Description (Partial):\n{job['description'][:2500]}...\n")
+            print(f"📄 Description (Partial):\n{job['description'][:800]}...\n")
             print("-" * 50)

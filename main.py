@@ -64,6 +64,10 @@ def main():
     try:
         checkpoint_jobs = process_checkpoint_jobs(last_checkpoint_ids)
         
+        if checkpoint_jobs:
+            new_fetched_ids = [job['id'] for job in checkpoint_jobs]
+            last_checkpoint_ids = (new_fetched_ids + last_checkpoint_ids)[:3]
+
         valid_checkpoint_jobs = []
         for job in checkpoint_jobs:
             desc = job.get('description', '')
@@ -73,10 +77,6 @@ def main():
                 valid_checkpoint_jobs.append(job)
             else:
                 print(f"⚠️ Skipping job {job.get('id')} - No valid description found.")
-        
-        if valid_checkpoint_jobs:
-            new_valid_ids = [job['id'] for job in valid_checkpoint_jobs]
-            last_checkpoint_ids = (new_valid_ids + last_checkpoint_ids)[:3]
         
         all_jobs.extend(valid_checkpoint_jobs)
         print(f"✅ Check Point: Found {len(valid_checkpoint_jobs)} valid jobs (Filtered {len(checkpoint_jobs) - len(valid_checkpoint_jobs)}).")
