@@ -10,8 +10,7 @@ def fetch_and_filter_initial_jobs(last_run_ts):
     """
     Fetches jobs from Microsoft's Phenom API for Israel.
     """
-    api_url = "https://apply.careers.microsoft.com/api/pcsx/search?domain=microsoft.com&query=&location=israel&start=0&sort_by=timestamp&filter_include_remote=1&filter_employment_type=full-time&filter_profession=software+engineering&filter_profession=product+management&filter_profession=security+engineering&filter_profession=design+%26+creative&filter_profession=administration&filter_profession=analytics"
-    
+    api_url = "https://apply.careers.microsoft.com/api/pcsx/search?domain=microsoft.com&query=&location=israel&start=0&sort_by=timestamp&filter_include_remote=1&filter_employment_type=full-time"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept": "application/json"

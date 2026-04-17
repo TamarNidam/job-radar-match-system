@@ -168,8 +168,7 @@ def process_checkpoint_jobs(recent_job_ids):
     return detailed_jobs
 
 if __name__ == "__main__":
-    # Provide a list of the last 3 Job IDs you successfully saved to your DB.
-    # The script will stop searching as soon as it sees ANY of these IDs.
+    
     RECENT_JOB_IDS = [25430, 25425, 25420] 
     
     final_jobs_list = process_checkpoint_jobs(RECENT_JOB_IDS)
