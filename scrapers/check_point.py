@@ -65,11 +65,9 @@ def fetch_and_filter_initial_jobs(recent_job_ids):
                 title = title_tag.text.strip()
                 link = title_tag['href']
                 
-                # Fix relative links
                 if link.startswith('index.php'):
                     link = f"https://careers.checkpoint.com/{link}"
                     
-                # Extract Job ID
                 job_id = 0
                 if 'joborderid=' in link:
                     try:
@@ -77,13 +75,11 @@ def fetch_and_filter_initial_jobs(recent_job_ids):
                     except ValueError:
                         pass
                 
-                # Smart Stop Condition: Stop if the job_id is in our list of recent jobs
                 if job_id in recent_job_ids:
                     print(f"🛑 Reached a known job (ID: {job_id}). Stopping page traversal.")
                     found_known_job = True
                     break 
                 
-                # Extract Location
                 location = "Unknown Location"
                 pos_info = card.find('div', class_='posInfo')
                 if pos_info:
@@ -98,7 +94,6 @@ def fetch_and_filter_initial_jobs(recent_job_ids):
                     "job_link": link
                 })
                 
-            # Move to the next page (10 items per page)
             start += 10
             
         except Exception as e:
@@ -107,21 +102,20 @@ def fetch_and_filter_initial_jobs(recent_job_ids):
 
     return new_positions
 
-def fetch_job_description(session, job_link): #  session כפרמטר
+def fetch_job_description(job_link): 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://careers.checkpoint.com/index.php?m=cpcareers&a=search" # הוספת Referer
+        "Referer": "https://careers.checkpoint.com/index.php?m=cpcareers&a=search"
     }
     
     try:
-        response = session.get(job_link, headers=headers, verify=False, timeout=15)
+        response = requests.get(job_link, headers=headers, verify=False, timeout=15)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         container = soup.find('div', id='jobOrderInfo')
 
         if container:
-            # Clean the HTML and return text with line breaks
             return container.get_text(separator='\n', strip=True)
         else:
             print("Description container not found.")
@@ -136,7 +130,6 @@ def process_checkpoint_jobs(recent_job_ids):
     """
     Main engine: Collects the job list, then extracts details for each new job.
     """
-    session = requests.Session()
 
     new_positions = fetch_and_filter_initial_jobs(recent_job_ids)
     
@@ -155,7 +148,8 @@ def process_checkpoint_jobs(recent_job_ids):
         
         print(f"  [{index}/{len(new_positions)}] Fetching details for: {job['title']} (ID: {job['id']})...")
         print(f"     Link: {job['job_link']}")
-        description = fetch_job_description(session, job['job_link'])
+        
+        description = fetch_job_description(job['job_link'])
         
         detailed_jobs.append({
             "id": job['id'],
@@ -168,7 +162,6 @@ def process_checkpoint_jobs(recent_job_ids):
     return detailed_jobs
 
 if __name__ == "__main__":
-    
     RECENT_JOB_IDS = [25430, 25425, 25420] 
     
     final_jobs_list = process_checkpoint_jobs(RECENT_JOB_IDS)
