@@ -71,7 +71,7 @@ def main():
         valid_checkpoint_jobs = []
         for job in checkpoint_jobs:
             desc = job.get('description', '')
-            invalid_markers = ["Description container not found", "Error fetching details", "", " "]
+            invalid_markers = ["Description container not found", "Error fetching details"]
             
             if desc and not any(marker in desc for marker in invalid_markers):
                 valid_checkpoint_jobs.append(job)
